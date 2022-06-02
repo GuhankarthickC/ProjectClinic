@@ -4,7 +4,7 @@ using System;
 
 namespace Users
 {
-    class Program
+    class MainProgram
     {
         static void Main(string[] args)
         {
