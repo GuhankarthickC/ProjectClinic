@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace Front_office_staff_Backend
 {
-    public class Users_BE
+    public class Users_BE : Users_BE_Interface
     {
         public class Login_Error : ApplicationException
         {
@@ -174,7 +174,7 @@ namespace Front_office_staff_Backend
             }
 
         }
-        private void CancelAppointment()
+        public void CancelAppointment()
         {
             Console.Clear();
             int choice,change,patientID,i=0;string date = "",output="",confirm="",visiting="",availabletill="",doc_name="";string[] a;
@@ -323,7 +323,7 @@ namespace Front_office_staff_Backend
             }
         }
 
-        private void ScheduleAppointment()
+        public void ScheduleAppointment()
         {
             Console.Clear();
             categories cat;
@@ -456,7 +456,7 @@ namespace Front_office_staff_Backend
 
         }
 
-        private void AddPatient()
+        public void AddPatient()
         {
             Console.Clear();
             string output="", reply = "";
@@ -546,7 +546,7 @@ namespace Front_office_staff_Backend
                 AddPatient();
             }
         }
-        private void ViewDoctors()
+        public void ViewDoctors()
         {
             Console.Clear();
             SqlDataReader dr = ud.SelectDoctorData();
@@ -658,9 +658,9 @@ namespace Front_office_staff_Backend
        
             string output = ud.InsertPatientData(r);
             return output;
-        }  
+        }
 
-     
+        
     }
 }
  
