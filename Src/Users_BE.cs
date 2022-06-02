@@ -1,7 +1,6 @@
-﻿using ConsoleTables;
+using ConsoleTables;
 using Front_Office_Staff_DAL;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
@@ -34,9 +33,19 @@ namespace Front_office_staff_Backend
             }
         }
         Users_DAL ud = new Users_DAL();
+     
+        //Added enum for selecting respective specialization from the categories
+        enum categories{
+            General=1, 
+            Internal_Medicine, 
+            Pediatrics, 
+            Orthopedics, 
+            Ophthalmology
+        }
         public bool Login()
         {
             bool flag = false;
+            string username = "",password="";
             Console.WriteLine("===================================================================================================================");
             Console.WriteLine(String.Format("{0," + Console.WindowWidth / 2 + "}", "Login"));
             Console.WriteLine("===================================================================================================================");
@@ -44,14 +53,14 @@ namespace Front_office_staff_Backend
             {
                 Console.WriteLine("\n\t\t\tUserName : ");
                 Console.SetCursorPosition(36, 4);
-                string username = Console.ReadLine();
+                username = Console.ReadLine();
                 if (username.Length > 10)
                 {
                     throw new Login_Error("UserName length should be 10 or less");
                 }
                 Console.WriteLine("\n\t\t\tPassword : ");
                 Console.SetCursorPosition(36, 6);
-                string password = Console.ReadLine();
+                password = Console.ReadLine();
                 if (!password.Contains('@'))
                 {
                     throw new Login_Error("Password should contain '@' as part of it");
@@ -61,6 +70,7 @@ namespace Front_office_staff_Backend
                     SqlDataReader d = ud.SelectLoginData(username);
                     while (d.Read())
                     {
+                        //SQL Reader takes the values using their respective columns names from database for verification
                         if ((d["UserName"].Equals(username)) && (d["Password"].Equals(password)))
                         {
                             Console.ForegroundColor = ConsoleColor.Green;
@@ -81,7 +91,8 @@ namespace Front_office_staff_Backend
                     }
                     
                 }
-            }catch(Login_Error e)
+            }//User Defined Exception 
+            catch(Login_Error e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("\n\t\t\tError: "+e.Message);
@@ -95,6 +106,7 @@ namespace Front_office_staff_Backend
         }
         public void Homepage()
         {
+            int choice;
             Console.WriteLine("===================================================================================================================");
             Console.WriteLine(String.Format("{0," + Console.WindowWidth / 2 + "}", "Home"));
             Console.WriteLine("===================================================================================================================");
@@ -104,7 +116,8 @@ namespace Front_office_staff_Backend
             try
             {
                 Console.SetCursorPosition(30, 13);
-                int choice = Convert.ToInt32(Console.ReadLine());
+                choice= Convert.ToInt32(Console.ReadLine());
+                //Using Regex to get choice within the range (1-5)
                 if (!Regex.IsMatch(choice.ToString(), "^[1-5]*$"))
                 {
                     throw new Format("Choice should only contain numbers (1-5)");
@@ -140,7 +153,8 @@ namespace Front_office_staff_Backend
                         Homepage();
                         break;
                 }
-            }catch(Format e)
+            }//User Defined exception
+            catch(Format e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("\n\t\tError: " + e.Message);
@@ -163,7 +177,7 @@ namespace Front_office_staff_Backend
         private void CancelAppointment()
         {
             Console.Clear();
-            int patientID,i=0;string date = "",output="",confirm="",visiting="",availabletill="",doc_name="";string[] a;
+            int choice,change,patientID,i=0;string date = "",output="",confirm="",visiting="",availabletill="",doc_name="";string[] a;
             List<Appointment> lappoint = new List<Appointment>();
             Appointment appoint;
             Console.WriteLine("===================================================================================================================");
@@ -178,98 +192,132 @@ namespace Front_office_staff_Backend
                 Console.SetCursorPosition(52, 6);
                 date = Console.ReadLine();
                 SqlDataReader dr = ud.SelectAppointmentData(patientID, date);
-                var table = new ConsoleTable(new ConsoleTableOptions
+                if (!(dr.HasRows))
                 {
-                    EnableCount = false,
-                    Columns = new[] { "Appointment_NO", dr.GetName(2), dr.GetName(3), dr.GetName(4), dr.GetName(5), dr.GetName(6) }
-                });
-                while (dr.Read())
-                {
-                    table.AddRow(++i, dr.GetValue(2), dr.GetValue(3), dr.GetValue(4), dr.GetValue(5),
-                             dr.GetValue(6));
-                    a = dr.GetValue(2).ToString().Split(" ");
-                    doc_name = a[0];
-                    availabletill = dr.GetValue(6).ToString();
-                    appoint = new Appointment(Convert.ToInt32(dr.GetValue(0)), Convert.ToInt32(dr.GetValue(1)), doc_name, dr.GetValue(3).ToString(), dr.GetValue(4).ToString(), dr.GetValue(5).ToString(), dr.GetValue(6).ToString());
-                    lappoint.Add(appoint);
-                }
-                Console.WriteLine("\n");
-                table.Write();
-                dr.Close();
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("\n\t\tPress k to Cancel\t\t\tPress O to Back");
-                confirm = Console.ReadLine();
-                if (confirm.ToLower().Equals("k"))
-                {
-                    if (lappoint.Count > 1)
-                    {
-                        Console.ForegroundColor = ConsoleColor.White;
-                        Console.WriteLine("\n\tSelect the Appointment to Cancel - ");
-                        Console.SetCursorPosition(52, 21);
-                        int choice = Convert.ToInt32(Console.ReadLine());
-                        output = ud.CancelAppointment(lappoint.ElementAt(choice - 1));
-                        SqlDataReader dd = ud.SelectDoctor(lappoint.ElementAt(choice - 1).Doctor_Name);
-                        while (dd.Read())
-                        {
-                            visiting = dd.GetValue(5).ToString();
-                        }
-                        dd.Close();
-                        int change = Convert.ToInt32(visiting.Substring(0, 1));
-                        visiting = visiting.Replace(visiting.Substring(0, 1), (change += 1).ToString());
-                        _ = ud.Appointmentupdatedata(lappoint.ElementAt(choice - 1).Doctor_Name, visiting, availabletill);
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("\n\t\tCancelling....");
-                        for (var j = 0; j <= 100; ++j)
-                        {
-                            progressbar(j, true);
-                            Thread.Sleep(30);
-                        }
-                        Console.WriteLine("\n\t\t{0}", output);
-                        Console.ForegroundColor = ConsoleColor.White;
-                        Thread.Sleep(2000);
-                        Console.Clear();
-                        Homepage();
-                    }
-                    else
-                    {
-                        output = ud.CancelAppointment(lappoint.ElementAt(0));
-                        SqlDataReader dd = ud.SelectDoctor(lappoint.ElementAt(0).Doctor_Name);
-                        while (dd.Read())
-                        {
-                            visiting = dd.GetValue(5).ToString();
-                        }
-                        dd.Close();
-                        int change = Convert.ToInt32(visiting.Substring(0, 1));
-                        visiting = visiting.Replace(visiting.Substring(0, 1), (change += 1).ToString());
-                        _ = ud.Appointmentupdatedata(lappoint.ElementAt(0).Doctor_Name, visiting, availabletill);
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("\n\t\tCancelling the appointment....");
-                        for (var j = 0; j <= 100; ++j)
-                        {
-                            progressbar(j, true);
-                            Thread.Sleep(30);
-                        }
-                        Console.WriteLine("\n\t\t{0}", output);
-                        Console.ForegroundColor = ConsoleColor.White;
-                        Thread.Sleep(2000);
-                        Console.Clear();
-                        Homepage();
-                    }
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("\n\t\tNo Appointment Available for the PatientID : {0} on {1}", patientID, date);
+                    Thread.Sleep(2500);
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.Clear();
+                    Homepage();
                 }
                 else
                 {
-                    Console.Clear();
-                    Console.ForegroundColor = ConsoleColor.White;
-                    Homepage();
+                    var table = new ConsoleTable(new ConsoleTableOptions
+                    {
+                        EnableCount = false,
+                        Columns = new[] { "Appointment_NO", dr.GetName(2), dr.GetName(3), dr.GetName(4), dr.GetName(5), dr.GetName(6) }
+                    });
+                    while (dr.Read())
+                    {
+                        table.AddRow(++i, dr.GetValue(2), dr.GetValue(3), dr.GetValue(4), dr.GetValue(5),
+                                 dr.GetValue(6));
+                        a = dr.GetValue(2).ToString().Split(" ");
+                        doc_name = a[0];
+                        availabletill = dr.GetValue(6).ToString();
+                        //Creating a appointment object
+                        appoint = new Appointment(Convert.ToInt32(dr.GetValue(0)), Convert.ToInt32(dr.GetValue(1)), doc_name, dr.GetValue(3).ToString(), dr.GetValue(4).ToString(), dr.GetValue(5).ToString(), dr.GetValue(6).ToString());
+                        //Adding the object to the appointment list incase more appointments are available for particular user
+                        lappoint.Add(appoint);
+                    }
+                    Console.WriteLine("\n");
+                    //Table that contains patient appointment details
+                    table.Write();
+                    dr.Close();
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("\n\t\tPress k to Cancel\t\t\tPress O to Back");
+                    confirm = Console.ReadLine();
+                    if (confirm.ToLower().Equals("k"))
+                    {
+                        if (lappoint.Count > 1)
+                        {
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.WriteLine("\n\tSelect the Appointment to Cancel - ");
+                            Console.SetCursorPosition(52, 21);
+                            choice = Convert.ToInt32(Console.ReadLine());
+                            if (!(choice < lappoint.Count))
+                            {
+                                throw new Format("Choice should only contain numbers within " + lappoint.Count);
+                            }
+                            //Selecting the required appointment from the appointment table using object from appointment list
+                            //Used LINQ 'ElementAt' to get value of the index from list
+                            output = ud.CancelAppointment(lappoint.ElementAt(choice - 1));
+                            SqlDataReader dd = ud.SelectDoctor(lappoint.ElementAt(choice - 1).Doctor_Name);
+                            while (dd.Read())
+                            {
+                                visiting = dd.GetValue(5).ToString();
+                            }
+                            dd.Close();
+                            change = Convert.ToInt32(visiting.Substring(0, 1));
+                            visiting = visiting.Replace(visiting.Substring(0, 1), (change += 1).ToString());
+                            //Updating the doctors table after appointment cancellation
+                            _ = ud.Appointmentupdatedata(lappoint.ElementAt(choice - 1).Doctor_Name, visiting, availabletill);
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("\n\t\tCancelling....");
+                            for (var j = 0; j <= 100; ++j)
+                            {
+                                progressbar(j, true);
+                                Thread.Sleep(30);
+                            }
+                            Console.WriteLine("\n\t\t{0}", output);
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Thread.Sleep(2000);
+                            Console.Clear();
+                            Homepage();
+                        }
+                        else
+                        {
+                            //If the list contains only one appointment 
+                            output = ud.CancelAppointment(lappoint.ElementAt(0));
+                            SqlDataReader dd = ud.SelectDoctor(lappoint.ElementAt(0).Doctor_Name);
+                            while (dd.Read())
+                            {
+                                visiting = dd.GetValue(5).ToString();
+                            }
+                            dd.Close();
+                            change = Convert.ToInt32(visiting.Substring(0, 1));
+                            visiting = visiting.Replace(visiting.Substring(0, 1), (change += 1).ToString());
+                            //Updating the doctor's table with appointment cancellation
+                            _ = ud.Appointmentupdatedata(lappoint.ElementAt(0).Doctor_Name, visiting, availabletill);
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("\n\t\tCancelling the appointment....");
+                            for (var j = 0; j <= 100; ++j)
+                            {
+                                progressbar(j, true);
+                                Thread.Sleep(30);
+                            }
+                            Console.WriteLine("\n\t\t{0}", output);
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Thread.Sleep(2000);
+                            Console.Clear();
+                            Homepage();
+                        }
+                    }
+                    else
+                    {
+                        Console.Clear();
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Homepage();
 
+                    }
                 }
+            }
+            catch (Format f)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("\n\t\tError: " + f.Message);
+                Thread.Sleep(2500);
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Clear();
+                CancelAppointment();
             }
             catch (Exception e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("\n\t\tError : " + e.Message);
-                Thread.Sleep(1000);
+                Thread.Sleep(2000);
                 Console.ForegroundColor = ConsoleColor.White;
+                Console.Clear();
                 CancelAppointment();
 
             }
@@ -278,7 +326,10 @@ namespace Front_office_staff_Backend
         private void ScheduleAppointment()
         {
             Console.Clear();
-            int patientID,id=0;string specialization,date,availablefrom="",availabletill="",visiting="",to_time="",Doctor_Name="",choice="";
+            categories cat;
+            SqlDataReader dr,dd;
+            Appointment appoint;
+            int patientID,special,change,id =0;string  output,doc_name,specialization, date,availablefrom="",availabletill="",visiting="",to_time="",Doctor_Name="",choice="";
             Console.WriteLine("===================================================================================================================");
             Console.WriteLine(String.Format("{0," + Console.WindowWidth / 2 + "}", "Appointment Booking"));
             Console.WriteLine("===================================================================================================================");
@@ -287,15 +338,22 @@ namespace Front_office_staff_Backend
                 Console.WriteLine("\n\tEnter Patient ID :");
                 Console.SetCursorPosition(52, 4);
                 patientID = Convert.ToInt32(Console.ReadLine());
-                Console.WriteLine("\n\t(Choices – General, Internal Medicine, Pediatrics, Orthopedics, Ophthalmology) ");
+                Console.WriteLine("\n\t(Choices – 1.General, 2.Internal Medicine, 3.Pediatrics, 4.Orthopedics, 5.Ophthalmology) ");
                 Console.WriteLine("\n\tEnter Specialization Required : ");
                 Console.SetCursorPosition(52, 8);
-                specialization = Console.ReadLine();
-                if (!((specialization.Equals("General")) || (specialization.Equals("Internal Medicine")) || (specialization.Equals("Pediatrics")) || (specialization.Equals("Orthopedics")) || specialization.Equals("Ophthalmology")))
+                special = Convert.ToInt32(Console.ReadLine());
+                cat = (categories)special;
+                specialization = cat.ToString();
+                if (!Regex.IsMatch(special.ToString(), "^[1-5]*$"))
+                {
+                    throw new Format("Choice should only contain numbers (1-5)");
+                }
+                if (!((specialization.Equals("General")) || (specialization.Equals("Internal_Medicine")) || (specialization.Equals("Pediatrics")) || (specialization.Equals("Orthopedics")) || specialization.Equals("Ophthalmology")))
                 {
                     throw new Valid_response("Enter correct specialization");
                 }
-                SqlDataReader dr = ud.SelectDoctorData();
+                //Getting Available order under given specialization
+                dr = ud.SelectDoctorData();
                 Console.WriteLine("\n\tDoctors Available Under Specialization ({0}) ", specialization);
                 while (dr.Read())
                 {
@@ -308,14 +366,17 @@ namespace Front_office_staff_Backend
                 }
                 Console.WriteLine("\n\tEnter the name of the doctor to confirm the appointment with : ");
                 Console.SetCursorPosition(72, 16);
-                string doc_name = Console.ReadLine();
+                doc_name = Console.ReadLine();
+                //Replacing the first letter to uppercase in-case small letter was given
+                doc_name = doc_name.Replace(doc_name.Substring(0, 1), doc_name.Substring(0, 1).ToUpper());
                 Console.WriteLine("\n\tEnter Visit Date (DD/MM/YYYY) :");
                 Console.SetCursorPosition(52, 18);
                 date = Console.ReadLine();
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("\n\tTimeslot Available For Appoinment Booking : ");
                 dr.Close();
-                SqlDataReader dd = ud.SelectDoctorData();
+                //Getting timeslot from the selected order for appointment booking
+                dd = ud.SelectDoctorData();
                 var table = new ConsoleTable(new ConsoleTableOptions
                 {
                     EnableCount = false,
@@ -333,7 +394,7 @@ namespace Front_office_staff_Backend
                         to_time = dd.GetValue(7).ToString();
                     }
                 }
-                int change = Convert.ToInt32(visiting.Substring(0, 1));
+                change = Convert.ToInt32(visiting.Substring(0, 1));
                 change -= 1;
                 visiting = visiting.Replace(visiting.Substring(0, 1), change.ToString());
                 change = Convert.ToInt32(to_time.Substring(0, 2));
@@ -344,9 +405,11 @@ namespace Front_office_staff_Backend
                 choice = Console.ReadLine();
                 if (choice.ToLower().Equals("k"))
                 {
+                    //Updating the new appointment available time
                     _ = ud.Appointmentupdatedata(doc_name, visiting, availabletill);
-                    Appointment appoint = new Appointment(patientID, specialization, Doctor_Name, date, availabletill, to_time);
-                    string output = ud.Appointmentdata(appoint);
+                    appoint = new Appointment(patientID, specialization, Doctor_Name, date, availabletill, to_time);
+                    //Inserting the data into the appointment table
+                    output = ud.Appointmentdata(appoint);
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine("\n\t\t\tBooking....");
                     for (var i = 0; i <= 100; ++i)
@@ -396,6 +459,7 @@ namespace Front_office_staff_Backend
         private void AddPatient()
         {
             Console.Clear();
+            string output="", reply = "";
             Patient p = new Patient();
             Console.WriteLine("===================================================================================================================");
             Console.WriteLine(String.Format("{0," + Console.WindowWidth / 2 + "}", "Add patient"));
@@ -433,12 +497,12 @@ namespace Front_office_staff_Backend
                 Console.WriteLine("\n\t\t\tEnter Patient Date of Birth :");
                 Console.SetCursorPosition(54, 12);
                 p.dateofbirth = Console.ReadLine();
-                string output = ud.InsertPatientData(p);
+                output = ud.InsertPatientData(p);
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("\n\t\t\t" + output);
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine("\n\t\t\tPress X - Back to Main Menu\t\tO - Add a New Patient");
-                string reply = Console.ReadLine();
+                reply = Console.ReadLine();
                 if (reply.ToLower().Equals("x"))
                 {
                     Console.Clear();
@@ -506,7 +570,7 @@ namespace Front_office_staff_Backend
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("\n\t\t\t\t\tPress X - Back to Main Menu");
             Console.ForegroundColor = ConsoleColor.White;
-            string reply=Console.ReadLine();
+            string reply = Console.ReadLine();
             try
             {
                 if (reply.ToLower().Equals("x"))
@@ -566,13 +630,6 @@ namespace Front_office_staff_Backend
 
                     }
                 }
-            
-            
-           /* catch (Login_Error e)
-            {
-                Console.WriteLine("\n\t\t\tError: " + e.Message);
-                flag = false;
-            }*/
             return flag;
         }
 
